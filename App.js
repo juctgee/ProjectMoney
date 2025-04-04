@@ -13,6 +13,7 @@ import BudgetScreen from './screens/BudgetScreen';
 import 'core-js/features/set-immediate';
 import SettingsScreen from './screens/SettingsScreen';
 
+
 const Stack = createStackNavigator();
 
 export default function App() {

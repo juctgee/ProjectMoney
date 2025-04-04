@@ -51,6 +51,12 @@ const initialData = {
   ],
 };
 
+const handleSubmitTransaction = () => {
+  // ส่งข้อมูลไปที่ BudgetScreen
+  navigation.navigate('BudgetScreen', {
+    transactionData: transactionData,
+  });
+};
 const TransactionScreen = () => {
   const [selectedMonth, setSelectedMonth] = useState("January");
   const [showModal, setShowModal] = useState(false);
@@ -80,14 +86,14 @@ const TransactionScreen = () => {
       description: "Coffee",
     },
   ]);
-  const [yesterdayTransaction, setYesterdayTransaction] = useState([
+  const [yesterdayTransaction, ] = useState([
     {
-      id: "1",
-      category: "Transport",
-      icon: "car",
-      amount: "-50",
-      time: "10:00 AM",
-      description: "Bus fare",
+      id: "",
+      category: "",
+      icon: "",
+      amount: "",
+      time: "",
+      description: "",
     },
   ]);
 
@@ -160,6 +166,7 @@ const TransactionScreen = () => {
     </View>
   );
 
+  
   const handleEditSave = () => {
     if (selectedTransaction) {
       const updatedData = transactionData[selectedMonth].map((transaction) => {
@@ -415,7 +422,6 @@ const TransactionScreen = () => {
       <Text style={styles.sectionHeader}>Yesterday</Text>
       <FlatList
         data={yesterdayTransaction}
-        renderItem={renderItem}
         keyExtractor={(item) => item.id}
       />
 

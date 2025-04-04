@@ -1,22 +1,45 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Image, Modal, TextInput } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker'; // เพิ่มการใช้งาน ImagePicker
+import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function ProfileScreen({ route, navigation }) {
-  // รับข้อมูล userName และ email จาก route.params
-  const { userName = 'ee', email = 'ee@gmail.com' } = route.params || {};
-
-  // State สำหรับ Modal และข้อมูลที่จะแก้ไข
   const [isAccountModalVisible, setAccountModalVisible] = useState(false);
   const [isLogoutModalVisible, setLogoutModalVisible] = useState(false);
-  const [isEditModalVisible, setEditModalVisible] = useState(false); // สำหรับเปิด/ปิด Modal แก้ไขโปรไฟล์
-  const [newUserName, setNewUserName] = useState(userName); // State สำหรับเก็บชื่อใหม่
-  const [newEmail, setNewEmail] = useState(email); // State สำหรับเก็บอีเมลใหม่
-  const [profileImage, setProfileImage] = useState(require('../assets/images/cat.png')); // เริ่มต้นด้วยภาพ cat.png
+  const [isEditModalVisible, setEditModalVisible] = useState(false);
+  const [newUserName, setNewUserName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [profileImage, setProfileImage] = useState(require('../assets/images/cat.png'));
+  
+  const saveProfile = async () => {
+    try {
+      // บันทึกชื่อใหม่และอีเมลใหม่
+      await AsyncStorage.setItem('userName', newUserName);
+      await AsyncStorage.setItem('email', newEmail); // บันทึกอีเมลใหม่
+    } catch (e) {
+      console.error('Failed to save profile data', e);
+    }
+    setEditModalVisible(false);
+  };
 
-  // Request permission for the image picker
+  // ดึงข้อมูลที่เก็บไว้จาก AsyncStorage
   useEffect(() => {
+    const getProfileData = async () => {
+      try {
+        const savedUserName = await AsyncStorage.getItem('userName');
+        const savedEmail = await AsyncStorage.getItem('email');
+        if (savedUserName !== null && savedEmail !== null) {
+          setNewUserName(savedUserName);
+          setNewEmail(savedEmail);
+        }
+      } catch (e) {
+        console.error('Failed to load profile data', e);
+      }
+    };
+    getProfileData();
+
+    // Request permission for the image picker
     (async () => {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
@@ -34,7 +57,7 @@ export default function ProfileScreen({ route, navigation }) {
     });
 
     if (!result.cancelled) {
-      setProfileImage({ uri: result.uri }); // อัพเดต URL ของภาพ
+      setProfileImage({ uri: result.uri });
     }
   };
 
@@ -43,50 +66,47 @@ export default function ProfileScreen({ route, navigation }) {
   };
 
   const handleLogout = () => {
-    setLogoutModalVisible(true); // เปิด Modal สำหรับยืนยันการออกจากระบบ
+    setLogoutModalVisible(true);
   };
 
   const confirmLogout = () => {
     setLogoutModalVisible(false);
-    navigation.replace('Login'); // นำไปยังหน้าล็อกอิน
+    navigation.replace('Login');
   };
 
   const cancelLogout = () => {
-    setLogoutModalVisible(false); // ปิด Modal
+    setLogoutModalVisible(false);
   };
 
   const navigateToSettings = () => {
     navigation.navigate('Settings');
   };
 
-  // ฟังก์ชันเปิด/ปิด Modal แก้ไขโปรไฟล์
   const toggleEditModal = () => {
     setEditModalVisible(!isEditModalVisible);
   };
 
-  const saveProfile = () => {
-    // ปิด Modal และอัพเดทข้อมูลที่ถูกแก้ไข
-    setEditModalVisible(false);
-    // ที่นี่สามารถทำการบันทึกข้อมูลใหม่ไปยังฐานข้อมูลหรือตัวแปรที่ต้องการ
-  };
-
   return (
     <View style={styles.container}>
-      {/* Profile Section */}
       <View style={styles.profileContainer}>
         <TouchableOpacity onPress={pickImage}>
           <Image source={profileImage} style={styles.avatar} />
         </TouchableOpacity>
         <View style={styles.profileDetails}>
-          <Text style={styles.profileName}>{newUserName}</Text>
-          <Text style={styles.profileEmail}>{newEmail}</Text>
+          {newUserName && newEmail ? (
+            <>
+              <Text style={styles.profileName}>{newUserName}</Text>
+              <Text style={styles.profileEmail}>{newEmail}</Text>
+            </>
+          ) : (
+            <Text style={styles.profileName}>No profile data</Text>
+          )}
         </View>
         <TouchableOpacity style={styles.editButton} onPress={toggleEditModal}>
           <FontAwesome5 name="pen" size={16} color="gray" />
         </TouchableOpacity>
       </View>
 
-      {/* Account Section */}
       <TouchableOpacity style={styles.menuItem} onPress={toggleAccountModal}>
         <View style={styles.menuIconContainer}>
           <FontAwesome5 name="wallet" size={24} color="#A020F0" />
@@ -94,7 +114,6 @@ export default function ProfileScreen({ route, navigation }) {
         <Text style={styles.menuText}>Account</Text>
       </TouchableOpacity>
 
-      {/* Settings Section */}
       <TouchableOpacity style={styles.menuItem} onPress={navigateToSettings}>
         <View style={styles.menuIconContainer}>
           <FontAwesome5 name="cog" size={24} color="#A020F0" />
@@ -102,7 +121,6 @@ export default function ProfileScreen({ route, navigation }) {
         <Text style={styles.menuText}>Settings</Text>
       </TouchableOpacity>
 
-      {/* Logout Section */}
       <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
         <View style={styles.menuIconContainer}>
           <FontAwesome5 name="sign-out-alt" size={24} color="red" />
@@ -110,7 +128,6 @@ export default function ProfileScreen({ route, navigation }) {
         <Text style={[styles.menuText, { color: 'red' }]}>Logout</Text>
       </TouchableOpacity>
 
-      {/* Modal for Account Info */}
       <Modal
         visible={isAccountModalVisible}
         transparent={true}
@@ -120,8 +137,8 @@ export default function ProfileScreen({ route, navigation }) {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContent}>
             <Text style={styles.modalTitle}>Account Information</Text>
-            <Text style={styles.modalText}>Name: {newUserName}</Text>
-            <Text style={styles.modalText}>Email: {newEmail}</Text>
+            <Text style={styles.modalText}>Name: {newUserName || 'N/A'}</Text>
+            <Text style={styles.modalText}>Email: {newEmail || 'N/A'}</Text>
             <View style={styles.modalButtons}>
               <TouchableOpacity style={styles.modalButton} onPress={toggleAccountModal}>
                 <Text style={styles.modalButtonText}>Close</Text>
@@ -131,7 +148,6 @@ export default function ProfileScreen({ route, navigation }) {
         </View>
       </Modal>
 
-      {/* Modal for logout confirmation */}
       <Modal
         visible={isLogoutModalVisible}
         transparent={true}
@@ -154,7 +170,6 @@ export default function ProfileScreen({ route, navigation }) {
         </View>
       </Modal>
 
-      {/* Modal for editing profile */}
       <Modal
         visible={isEditModalVisible}
         transparent={true}
@@ -173,7 +188,7 @@ export default function ProfileScreen({ route, navigation }) {
             <TextInput
               style={styles.input}
               value={newEmail}
-              onChangeText={setNewEmail}
+              onChangeText={setNewEmail} // ใช้ onChangeText ในการอัพเดตอีเมล
               placeholder="Enter new email"
             />
             <View style={styles.modalButtons}>
@@ -259,36 +274,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 15,
   },
   modalText: {
     fontSize: 16,
-    color: 'gray',
-    marginBottom: 20,
-  },
-  input: {
-    width: '100%',
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    marginBottom: 20,
+    marginBottom: 10,
   },
   modalButtons: {
     flexDirection: 'row',
-    width: '100%',
-    justifyContent: 'space-around',
+    marginTop: 20,
   },
   modalButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    backgroundColor: '#d3d3d3',
-    borderRadius: 10,
+    backgroundColor: '#A020F0',
+    padding: 10,
+    margin: 5,
+    borderRadius: 5,
   },
   modalButtonText: {
     color: '#fff',
-    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  input: {
+    height: 40,
+    borderColor: '#ddd',
+    borderWidth: 1,
+    borderRadius: 5,
+    marginBottom: 20,
+    paddingHorizontal: 10,
+    width: '100%',
   },
 });

@@ -29,7 +29,7 @@ export default function SignUpScreen() {
 
   // Handle sign up
   const handleSignUp = async () => {
-    console.log("Sign Up Button Pressed"); // ตรวจสอบว่ากดปุ่มหรือไม่
+    console.log("Sign Up Button Pressed");
 
     if (!username || !email || !password) {
       Alert.alert('Error', 'Please fill in all fields');
@@ -37,10 +37,9 @@ export default function SignUpScreen() {
     }
 
     try {
-      // ตรวจสอบข้อมูลก่อนส่งไปที่ API
       console.log('Sending data:', { username, email, password });
 
-      const response = await fetch('http://192.168.1.47:8081/api/users/signup', {
+      const response = await fetch('http://192.168.1.48:8082/api/users/signup', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -50,39 +49,36 @@ export default function SignUpScreen() {
 
       const data = await response.json();
 
-      // ตรวจสอบว่าได้รับการตอบกลับจาก API
       console.log('API Response:', data);
 
       if (response.ok) {
         Alert.alert('Success', 'User registered successfully');
-        console.log("Navigating to Login Screen"); // แสดงว่าไปหน้า Login
-        navigation.navigate('Login'); // ไปหน้า Login
+        console.log("Navigating to Login Screen");
+        
+        // ส่งข้อมูลไปยังหน้า Login หลังจากสมัครสำเร็จ
+        navigation.navigate('Login'); // สามารถเพิ่มข้อมูลไปยังหน้าถัดไปได้ที่นี่หากต้องการ
       } else {
         Alert.alert('Error', data.error || 'Failed to register');
       }
     } catch (err) {
       Alert.alert('Error', `Network request failed: ${err.message}`);
-      console.error('Network error:', err); // แสดงข้อผิดพลาดใน console
+      console.error('Network error:', err);
     }
   };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-
-      {/* Background Image */}
       <Image
         style={styles.backgroundImage}
-        source={require('C:/Users/66923/Documents/Project/Money/Money/Money/assets/images/background.png')}
+        source={require('../assets/images/background.png')}
       />
 
-      {/* Logo */}
       <Logo
-        source={require('C:/Users/66923/Documents/Project/Money/Money/Money/assets/images/lustres.png')}
+        source={require('../assets/images/lustres.png')}
         style={styles.logoLarge}
       />
 
-      {/* Title and Form */}
       <View style={styles.formContainer}>
         <View style={styles.titleContainer}>
           <Text style={styles.titleText}>Sign Up</Text>
@@ -120,12 +116,10 @@ export default function SignUpScreen() {
             />
           </View>
 
-          {/* Sign Up Button */}
           <TouchableOpacity style={styles.signUpButton} onPress={handleSignUp}>
             <Text style={styles.signUpButtonText}>Sign Up</Text>
           </TouchableOpacity>
 
-          {/* Login Link */}
           <View style={styles.signupContainer}>
             <Text style={styles.signupText}>
               Already have an account?{' '}

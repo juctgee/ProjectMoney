@@ -9,10 +9,28 @@ const CreateBudgetScreen = ({ navigation }) => {
   const [isAlertEnabled, setIsAlertEnabled] = useState(true);
   const [category, setCategory] = useState('Select Category');
   const [isModalVisible, setModalVisible] = useState(false);
+  
+  // Wrap the fetch logic in an async function
+  const fetchData = async () => {
+    try {
+      const response = await fetch('http://192.168.1.48:8082/api/users/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username: 'example', email: 'example@mail.com', password: 'password123' }),
+      });
+      const data = await response.json();
+      console.log('Response:', data);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    }
+  };
 
   const handleContinue = () => {
     console.log("Navigating to Budget with amount:", amount);
     console.log("Selected Category:", category);
+    fetchData();  // Call fetch data when continuing
     navigation.navigate('Budget'); // ✅ ชื่อ Route ต้องตรงกับที่กำหนดไว้ใน MainNavigator
   };
 

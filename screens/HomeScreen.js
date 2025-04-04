@@ -1,49 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ScrollView, Modal, TextInput, Image, PermissionsAndroid } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Dimensions, ScrollView, Modal, TextInput, Image, PermissionsAndroid, Alert } from 'react-native';
 import { LineChart } from 'react-native-svg-charts';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
 import { launchImageLibrary } from 'react-native-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const { width } = Dimensions.get('window');
 
 export default function HomeScreen() {
   const [selectedTab, setSelectedTab] = useState('Today');
   const [savingsData, setSavingsData] = useState({
-    Today: [
-      { icon: 'graduation-cap', label: 'Education', amount: 220, time: '10:00 AM' },
-      { icon: 'car', label: 'Buy a Car', amount: 80, time: '03:30 PM' },
-      { icon: 'utensils', label: 'Food', amount: 50, time: '07:30 PM' },
-    ],
-    Week: [
-      { icon: 'graduation-cap', label: 'Education', amount: 300, time: '09:00 AM' },
-      { icon: 'car', label: 'Buy a Car', amount: 150, time: '02:00 PM' },
-      { icon: 'utensils', label: 'Food', amount: 100, time: '06:00 PM' },
-    ],
-    Month: [
-      { icon: 'graduation-cap', label: 'Education', amount: 500, time: '10:00 AM' },
-      { icon: 'car', label: 'Buy a Car', amount: 400, time: '04:00 PM' },
-      { icon: 'utensils', label: 'Food', amount: 200, time: '08:00 PM' },
-    ],
-    Year: [
-      { icon: 'graduation-cap', label: 'Education', amount: 2000, time: '10:00 AM' },
-      { icon: 'car', label: 'Buy a Car', amount: 1200, time: '01:00 PM' },
-      { icon: 'utensils', label: 'Food', amount: 800, time: '05:00 PM' },
-    ],
+    Today: [],
+    Week: [],
+    Month: [],
+    Year: [],
   });
   const [showModal, setShowModal] = useState(false);
   const [newItem, setNewItem] = useState({ label: '', amount: '', time: '' });
   const [editItemIndex, setEditItemIndex] = useState(null);
   const [imageUri, setImageUri] = useState(null);
-  
 
-  // Get current month and year
   const currentMonth = new Date().toLocaleString('default', { month: 'long' });
   const currentYear = new Date().getFullYear();
 
-  const data = savingsData[selectedTab].map((item) => item.amount);  // Map the amounts based on selected tab
+  const data = savingsData[selectedTab].map((item) => item.amount);
 
-  // Request permissions for Android
   const requestPermissions = async () => {
     const granted = await PermissionsAndroid.request(
       PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE
@@ -53,31 +35,80 @@ export default function HomeScreen() {
     }
   };
 
-  const handleAddItem = () => {
-    if (editItemIndex !== null) {
-      const updatedSavings = [...savingsData[selectedTab]];
-      updatedSavings[editItemIndex] = newItem;
-      setSavingsData({
-        ...savingsData,
-        [selectedTab]: updatedSavings,
-      });
-      setEditItemIndex(null); // Reset edit index
+const fetchSavingsData = async () => {
+  try {
+    const response = await fetch('http://192.168.1.48:8082/api/savings/home', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ /* your payload data */ }),
+    });
+
+    console.log('Response status:', response.status);
+    const data = await response.json();
+    console.log('Response data:', data);
+
+    if (response.ok) {
+      setSavingsData(data); // Assuming the API response contains the savings data
     } else {
-      const updatedSavings = [...savingsData[selectedTab], newItem];
-      setSavingsData({
-        ...savingsData,
-        [selectedTab]: updatedSavings,
-      });
+      console.error('Failed to fetch savings data: ', data);
+    }
+  } catch (error) {
+    console.error('Error fetching savings data:', error);
+  }
+};
+
+
+  // Add new savings item to the server
+  const handleAddItem = async () => {
+    const newAmount = parseFloat(newItem.amount);
+    if (isNaN(newAmount)) {
+      alert('Amount must be a valid number');
+      return;
     }
 
-    setShowModal(false);
-    setNewItem({ label: '', amount: '', time: '' });
-    setImageUri(null);  // Reset image after adding the item
+    // Make an API request to save the new savings item
+    try {
+      const response = await fetch('http://192.168.1.48:8082/api/savings/add', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          label: newItem.label,
+          amount: newAmount,
+          time: newItem.time,
+        }),
+      });
+
+      if (response.ok) {
+        const addedItem = await response.json();
+        // Update the savingsData state with the new item
+        setSavingsData({
+          ...savingsData,
+          [selectedTab]: [...savingsData[selectedTab], addedItem],
+        });
+        setShowModal(false);
+        setNewItem({ label: '', amount: '', time: '' });
+        setImageUri(null);
+
+        Alert.alert('New Savings Item Added', `You added $${newAmount} to ${newItem.label}`);
+      } else {
+        console.error('Failed to add savings item');
+      }
+    } catch (error) {
+      console.error('Error adding savings item:', error);
+    }
   };
 
   const handleDeleteItem = (index) => {
     const updatedSavings = savingsData[selectedTab].filter((_, i) => i !== index);
     setSavingsData({
+      ...savingsData,
+      [selectedTab]: updatedSavings,
+    });
+    saveDataToStorage({
       ...savingsData,
       [selectedTab]: updatedSavings,
     });
@@ -91,11 +122,11 @@ export default function HomeScreen() {
   };
 
   const handleSelectImage = () => {
-    requestPermissions();  // Request permissions before opening the gallery
+    requestPermissions();
     launchImageLibrary(
       { mediaType: 'photo', quality: 0.5 },
       (response) => {
-        console.log('ImagePicker Response:', response);  // Log the response to check
+        console.log('ImagePicker Response:', response);
         if (response.didCancel) {
           console.log('User canceled image picker');
         } else if (response.errorCode) {
@@ -107,14 +138,55 @@ export default function HomeScreen() {
     );
   };
 
+  const saveDataToStorage = async (data) => {
+    try {
+      await AsyncStorage.setItem('savingsData', JSON.stringify(data));
+    } catch (error) {
+      console.error('Error saving data to AsyncStorage:', error);
+    }
+  };
+
+  useEffect(() => {
+    const loadSavedData = async () => {
+      try {
+        const savedData = await AsyncStorage.getItem('savingsData');
+        if (savedData) {
+          setSavingsData(JSON.parse(savedData));
+        } else {
+          setSavingsData({
+            Today: [],
+            Week: [],
+            Month: [],
+            Year: [],
+          });
+          Alert.alert(
+            'Welcome to Savings Tracker',
+            'Thank you for joining! Start adding your savings today.'
+          );
+          await AsyncStorage.setItem('savingsData', JSON.stringify({
+            Today: [],
+            Week: [],
+            Month: [],
+            Year: [],
+          }));
+        }
+      } catch (error) {
+        console.error('Error loading saved data:', error);
+      }
+    };
+
+    loadSavedData();
+    fetchSavingsData(); // Fetch data from API when component mounts
+  }, []);
+
   return (
     <View style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.header}>
           <FontAwesome5 name="user-circle" size={40} color="#FFC0CB" />
           <Text style={styles.month}>{currentMonth} {currentYear}</Text>
-          <TouchableOpacity onPress={() => alert('Notification Clicked!')}>
-          <MaterialIcons name="notifications-none" size={28} color="purple" />
+          <TouchableOpacity>
+            <MaterialIcons name="notifications-none" size={28} color="purple" />
           </TouchableOpacity>
         </View>
 
@@ -130,7 +202,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
           <TouchableOpacity style={styles.expenseCard}>
             <Text style={styles.cardText}>Expenses</Text>
-            <Text style={styles.expense}>$1200</Text>
+            <Text style={styles.expense}>$2000</Text>
           </TouchableOpacity>
         </View>
 
@@ -196,14 +268,6 @@ export default function HomeScreen() {
               value={newItem.time}
               onChangeText={(text) => setNewItem({ ...newItem, time: text })}
             />
-
-            <TouchableOpacity style={styles.addImageButton} onPress={handleSelectImage}>
-              <Text style={styles.addImageButtonText}>Select Image</Text>
-            </TouchableOpacity>
-
-            {imageUri && (
-              <Image source={{ uri: imageUri }} style={styles.selectedImage} />
-            )}
 
             <TouchableOpacity style={styles.saveButton} onPress={handleAddItem}>
               <Text style={styles.saveButtonText}>Save</Text>
@@ -283,37 +347,36 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   incomeCard: {
-    width: '48%',
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#e0f7fa',
     padding: 15,
-    borderRadius: 15,
-    justifyContent: 'center',
+    borderRadius: 10,
+    width: '48%',
     alignItems: 'center',
   },
   expenseCard: {
-    width: '48%',
-    backgroundColor: '#F44336',
+    backgroundColor: '#ffebee',
     padding: 15,
-    borderRadius: 15,
-    justifyContent: 'center',
+    borderRadius: 10,
+    width: '48%',
     alignItems: 'center',
   },
   cardText: {
-    fontSize: 18,
-    color: '#fff',
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
   },
   income: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#00796b',
   },
   expense: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#d32f2f',
   },
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
     color: '#333',
     marginBottom: 10,
@@ -328,25 +391,32 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   tab: {
-    fontSize: 16,
+    fontSize: 18,
     color: '#888',
   },
   activeTab: {
-    fontSize: 16,
+    fontSize: 18,
+    color: 'purple',
     fontWeight: 'bold',
-    color: '#4CAF50',
   },
   savingsContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     marginBottom: 20,
+  },
+  seeAll: {
+    fontSize: 16,
+    color: '#888',
   },
   savingsItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 15,
     backgroundColor: '#fff',
+    padding: 15,
+    marginBottom: 10,
     borderRadius: 10,
-    marginBottom: 15,
     elevation: 5,
   },
   savingsDetails: {
@@ -356,49 +426,39 @@ const styles = StyleSheet.create({
   savingsLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#333',
   },
   savingsAmountContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginTop: 5,
   },
   savingsAmount: {
     fontSize: 18,
-    color: '#4CAF50',
+    fontWeight: 'bold',
+    color: '#00796b',
   },
   deleteContainer: {
-    alignItems: 'flex-end',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   timeText: {
-    fontSize: 12,
+    fontSize: 14,
     color: '#888',
-  },
-  saveButton: {
-    backgroundColor: '#4CAF50',
-    padding: 15,
-    borderRadius: 10,
-    alignItems: 'center',
-    marginTop: 20,
-  },
-  saveButtonText: {
-    color: '#fff',
-    fontSize: 18,
+    marginTop: 5,
   },
   addButton: {
     position: 'absolute',
     bottom: 20,
     right: 20,
-    backgroundColor: '#4CAF50',
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 5,
+    backgroundColor: 'purple',
+    padding: 15,
+    borderRadius: 50,
+    elevation: 8,
   },
   addButtonText: {
-    color: '#fff',
     fontSize: 30,
+    color: 'white',
+    fontWeight: 'bold',
   },
   modalOverlay: {
     flex: 1,
@@ -407,55 +467,44 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   modalContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: 'white',
     padding: 20,
     borderRadius: 10,
-    width: width - 40,
-    alignItems: 'center',
-    elevation: 10,
+    width: '80%',
   },
   modalTitle: {
     fontSize: 22,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 15,
   },
   input: {
-    width: '100%',
-    padding: 10,
-    marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#ddd',
-    borderRadius: 5,
-    fontSize: 16,
-  },
-  addImageButton: {
-    backgroundColor: '#2196F3',
+    borderColor: '#ccc',
     padding: 10,
+    marginBottom: 15,
     borderRadius: 5,
-    marginTop: 10,
   },
-  addImageButtonText: {
-    color: '#fff',
-    fontSize: 16,
+  saveButton: {
+    backgroundColor: '#4CAF50',
+    padding: 15,
+    borderRadius: 5,
+    alignItems: 'center',
   },
-  selectedImage: {
-    width: 100,
-    height: 100,
-    marginTop: 10,
+  saveButtonText: {
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
   closeButton: {
     backgroundColor: '#FF5722',
-    padding: 10,
+    padding: 15,
     borderRadius: 5,
     marginTop: 10,
+    alignItems: 'center',
   },
   closeButtonText: {
-    color: '#fff',
-    fontSize: 16,
-  },
-  seeAll: {
-    fontSize: 16,
-    color: '#2196F3',
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
   },
 });
-

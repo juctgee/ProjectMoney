@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons'; // ✅ ใช้อันนี้พอ
-import { useNavigation } from '@react-navigation/native';  // นำเข้าครั้งเดียว
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation, useRoute } from '@react-navigation/native'; 
+import { LineChart } from 'react-native-chart-kit';
 
+// Define months array
 const months = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
@@ -10,7 +12,49 @@ const months = [
 
 const BudgetScreen = () => {
   const navigation = useNavigation();
+  const route = useRoute();
   const [currentMonthIndex, setCurrentMonthIndex] = useState(new Date().getMonth());
+
+  const transactionData = route.params?.transactionData;  // Receive data from TransactionScreen
+
+  // Function to process transaction data and divide it into weekly data
+  const getWeeklyData = () => {
+    if (!transactionData || transactionData.length === 0) return [0, 0, 0, 0];  // If no data, return empty weeks
+
+    const weeklyData = [0, 0, 0, 0]; // Assuming 4 weeks in the month
+    transactionData.forEach(item => {
+      // Parse the amount to a number and assign it to the appropriate week (this is just a simple division logic)
+      const amount = parseFloat(item.amount.replace(/[^0-9.-]+/g, ""));  // Remove non-numeric chars from the amount
+
+      // For simplicity, assuming each transaction is randomly assigned to a week (could be based on the transaction date)
+      const week = Math.floor(Math.random() * 4);  // Randomly assign each transaction to a week
+      weeklyData[week] += amount;  // Add amount to the corresponding week
+    });
+
+    return weeklyData;
+  };
+
+  const data = {
+    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+    datasets: [
+      {
+        data: getWeeklyData(),
+        strokeWidth: 2,
+      },
+    ],
+  };
+
+  const chartConfig = {
+    backgroundColor: '#fff',
+    backgroundGradientFrom: '#fff',
+    backgroundGradientTo: '#fff',
+    decimalPlaces: 2,
+    color: (opacity = 1) => `rgba(0, 0, 255, ${opacity})`,
+    labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+    style: {
+      borderRadius: 26,
+    },
+  };
 
   const handlePrevMonth = () => {
     setCurrentMonthIndex(prevIndex => (prevIndex === 0 ? 11 : prevIndex - 1));
@@ -31,14 +75,19 @@ const BudgetScreen = () => {
           <Ionicons name="chevron-forward" size={24} color="white" />
         </TouchableOpacity>
       </View>
-      
+
       <View style={styles.body}>
-        <Text style={styles.noBudgetText}>You don’t have a budget.</Text>
-        <Text style={styles.subText}>Let’s make one so you’re in control.</Text>
+        <LineChart
+          data={data}
+          width={320}
+          height={220}
+          chartConfig={chartConfig}
+          style={styles.chart}
+        />
       </View>
 
       <TouchableOpacity style={styles.createButton} onPress={() => navigation.navigate('CreateBudgetScreen')}>
-        <Text style={styles.buttonText}>Create a budget</Text>
+        <Text style={styles.buttonText}>Create Budget</Text>
       </TouchableOpacity>
     </View>
   );
@@ -70,14 +119,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flex: 1,
   },
-  noBudgetText: {
-    fontSize: 18,
-    color: '#9e9e9e',
-    marginBottom: 10,
-  },
-  subText: {
-    fontSize: 16,
-    color: '#9e9e9e',
+  chart: {
+    marginVertical: 10,
+    borderRadius: 16,
   },
   createButton: {
     backgroundColor: '#6200ea',

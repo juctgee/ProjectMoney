@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Picker } from '@react-native-picker/picker';  // เปลี่ยนการนำเข้าที่นี่
+import { Picker } from '@react-native-picker/picker'; // เปลี่ยนการนำเข้าที่นี่
 
 const settingsOptions = [
   { label: 'Currency', value: 'USD', options: ['USD', 'EUR', 'GBP'] },
-  { label: 'Language', value: 'English', options: ['English', 'Spanish', 'French'] },
+  { label: 'Language', value: 'English', options: ['English', 'Thai', 'French'] },
   { label: 'Theme', value: 'Light', options: ['Light', 'Dark'] },
   { label: 'Security', value: 'Fingerprint', options: ['Fingerprint', 'Password'] },
   { label: 'Notification', value: 'Enabled', options: ['Enabled', 'Disabled'] },
