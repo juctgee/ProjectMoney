@@ -1,5 +1,5 @@
 # Project Money
-## Frive มี 2 ไฟล์
+## ไฟล์ มี 2 ไฟล์
 1. Money - React Native
 2. Backend - Express.js
 
