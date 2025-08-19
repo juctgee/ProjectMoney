@@ -1,12 +1,9 @@
-FROM node:18
+FROM php:8.2-apache
 
-WORKDIR /app
+# ติดตั้ง extension MySQL
+RUN docker-php-ext-install mysqli pdo pdo_mysql
 
-COPY package*.json ./
-RUN npm install
+# เปิด mod_rewrite
+RUN a2enmod rewrite
 
-COPY . .
-
-EXPOSE 3000
-
-CMD ["node", "server.js"]
+WORKDIR /var/www/html
