@@ -25,11 +25,13 @@ services:
     container_name: express-backend
     restart: always
     environment:
+      NODE_ENV: production        # รันในโหมด Production
       DB_HOST: db
       DB_PORT: 5432
       DB_USER: postgres
       DB_PASSWORD: 261146
       DB_NAME: Money
+      SERVER_HOST: 202.28.49.122  # Host ของเครื่องนี้
     ports:
       - "8082:8082"
     depends_on:
